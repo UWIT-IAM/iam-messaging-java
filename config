@@ -1,0 +1,17 @@
+{
+    'certs':  [
+        {
+            "id": "testsig1",
+            "url": "file:/home/fox/certs/x315.crt",
+            "keyfile": "/home/fox/certs/x315.key"
+         }
+    ],
+    'crypts': [
+     {"id": "testcrypt2",
+      "key": "OWJlZmZkOTQ5YTVkNDBmNWEyNzQwZWRiNzY4MmFkNzc="
+      }
+     ],
+    'ca_file': "/home/fox/certs/cacerts.cert",
+    'sender': 'messaging demo'
+}
+
