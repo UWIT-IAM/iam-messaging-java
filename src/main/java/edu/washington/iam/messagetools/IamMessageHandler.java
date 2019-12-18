@@ -52,6 +52,12 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.BadPaddingException;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.util.encoders.Hex;
 import org.bouncycastle.util.encoders.Base64;
@@ -64,8 +70,12 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonParseException;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IamMessageHandler {
+
+   final Logger logger = LoggerFactory.getLogger(IamMessageHandler.class);
 
    private static Base64 b64;
 
@@ -130,6 +140,7 @@ public class IamMessageHandler {
       message.setSigningCertUrl(certUrl);
       message.setIv(getJson(j_header, "iv"));
       message.setKeyId(getJson(j_header, "keyId"));
+      logger.debug("Processing message " + message.getMessageId() + " - " + message.getMessageType());
 
       body64 = getJson(obj, "body");
       logit(body64);
@@ -147,18 +158,17 @@ public class IamMessageHandler {
          byte[] bsigmsg = sigmsg.getBytes("UTF-8");
          signature.update(bsigmsg);
          boolean isCorrect = signature.verify(signature_in);
-         if (isCorrect) System.out.println("Signature good.");
-         else logit ("no");
+         if (!isCorrect) throw new IamMessageException("Signature verify fails");
       } catch (NoSuchAlgorithmException e) {
-         logit(e.toString());
+         throw new IamMessageException(e.getMessage());
       } catch (InvalidAlgorithmParameterException e) {
-         logit(e.toString());
+         throw new IamMessageException(e.getMessage());
       } catch (InvalidKeyException e) {
-         logit(e.toString());
+         throw new IamMessageException(e.getMessage());
       } catch (UnsupportedEncodingException e) {
-         logit(e.toString());
+         throw new IamMessageException(e.getMessage());
       } catch (SignatureException e) {
-         logit(e.toString());
+         throw new IamMessageException(e.getMessage());
       }
 
       // decrypt as needed
@@ -174,21 +184,20 @@ public class IamMessageHandler {
             byte[] dec64 = cipher.doFinal(b64.decode(body64));
             logit(new String(dec64));
             message.setBody(new String(dec64));
-            System.out.println("Document decrypts ok.");
          } catch (UnsupportedEncodingException e) {
-            logit(e.toString());
+            throw new IamMessageException(e.getMessage());
          } catch (NoSuchAlgorithmException e) {
-            logit(e.toString());
+            throw new IamMessageException(e.getMessage());
          } catch (InvalidKeyException e) {
-            logit(e.toString());
+            throw new IamMessageException(e.getMessage());
          } catch (IllegalBlockSizeException e) {
-            logit(e.toString());
+            throw new IamMessageException(e.getMessage());
          } catch (NoSuchPaddingException e) {
-            logit(e.toString());
+            throw new IamMessageException(e.getMessage());
          } catch (InvalidAlgorithmParameterException e) {
-            logit(e.toString());
+            throw new IamMessageException(e.getMessage());
          } catch (BadPaddingException e) {
-            logit(e.toString());
+            throw new IamMessageException(e.getMessage());
          }
       } else {
          message.setBody(new String(body64));
@@ -202,7 +211,7 @@ public class IamMessageHandler {
       return p.getAsString();
    }
    private void logit(String msg) {
-      System.out.println(msg);
+      // logger.info(msg);
    }
 
    /* USE the IamMessage object */
@@ -223,27 +232,10 @@ public class IamMessageHandler {
       logit("sigmsg=[" + sigmsg + "]");
       return sigmsg;
    }
-   /* USE the IamMessage object */
-   private String buildSigMessage(JsonObject header, String msg) {
-      String sigmsg = getJson(header, "contentType") + "\n";
-      if (header.get("keyId") != null) {
-         logit("adding header");
-         sigmsg = sigmsg + getJson(header, "iv") + "\n" + getJson(header, "keyId") + "\n";
-      }
-      sigmsg = sigmsg + getJson(header, "messageContext") + "\n" +
-                        getJson(header, "messageId") + "\n" +
-                        getJson(header, "messageType") + "\n" +
-                        getJson(header, "sender") + "\n" +
-                        getJson(header, "signingCertUrl") + "\n" +
-                        getJson(header, "timestamp") + "\n" +
-                        getJson(header, "version") + "\n" +
-                        msg + "\n";
-      logit("sigmsg=" + sigmsg);
-      return sigmsg;
-   }
 
-   /* Read a certificate from a PEM file */
-   private X509Certificate getCertificate(String certUrl) {
+   /* Fetch a certificate from cache or a URL */
+
+   public X509Certificate getCertificate(String certUrl) throws IamMessageException {
       
       FileInputStream file;
       X509Certificate cert = null;
@@ -256,18 +248,44 @@ public class IamMessageHandler {
          try {
             file = new FileInputStream(certFile);
          } catch (IOException e) {
-            logit("bad cert file: " + e);
-            return null;
+            throw new IamMessageException(e.getMessage());
          }
          try {
              CertificateFactory cf = CertificateFactory.getInstance("X.509");
              cert = (X509Certificate) cf.generateCertificate(file);
          } catch (CertificateException e) {
-             logit("bad cert: " + e);
-             return null;
+             throw new IamMessageException(e.getMessage());
+         }
+
+      } else { // assume http
+         CloseableHttpClient client = HttpClients.createDefault();
+         try {
+            logit("certurl: " + certUrl);
+            HttpGet request = new HttpGet(certUrl);
+            CloseableHttpResponse response = client.execute(request);
+            HttpEntity entity = response.getEntity();
+            if (entity == null) {
+               client.close();
+               throw new IamMessageException("certificate fetch exception");
+            }
+            CertificateFactory cf = CertificateFactory.getInstance("X.509");
+            cert = (X509Certificate) cf.generateCertificate(entity.getContent());
+            client.close();
+         } catch (IOException e) {
+            try {
+               client.close();
+            } catch (IOException ee) {
+            }
+            throw new IamMessageException(e.getMessage());
+         } catch (CertificateException e) {
+            try {
+               client.close();
+            } catch (IOException ee) {
+            }
+            throw new IamMessageException(e.getMessage());
          }
       }
-      signingCerts.put(certUrl, cert);
+      if (cert!=null) signingCerts.put(certUrl, cert);
       return cert;
    }
 

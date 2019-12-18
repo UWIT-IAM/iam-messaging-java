@@ -1,1 +1,8 @@
-java -classpath ".:./target/uw-iam-messaging-1.0.0.jar:./target/lib/bcprov-jdk15on-1.64.jar:./target/lib/gson-2.8.6.jar" Test
+jars="`ls target/lib/*.jar`"
+cp=".:target/uw-iam-messaging-1.0.0.jar"
+for jar in $jars
+do
+  cp="${cp}:${jar}"
+done
+
+java -classpath "$cp" Test

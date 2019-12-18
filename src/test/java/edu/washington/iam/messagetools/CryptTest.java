@@ -15,78 +15,69 @@
  * ========================================================================
  */
 
-// package edu.washington.iam.tools;
+package edu.washington.iam.messaging;
 
 import edu.washington.iam.messaging.IamMessage;
 import edu.washington.iam.messaging.IamMessageException;
 import edu.washington.iam.messaging.IamMessageHandler;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 
+import java.security.cert.X509Certificate;
+
 import org.bouncycastle.util.encoders.Base64;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonParseException;
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+// import org.junit.runner.RunWith;
 
 
-public class Test {
+public class CryptTest {
 
-   String encodedMessageFile = "./data/msg.enc";
-   String MessageBodyFile = "./data/msg.body";
+   String encodedMessageFile = "src/test/data/msg.enc";
+   String MessageBodyFile = "src/test/data/msg.body";
    private static Base64 b64;
-   String config = "./config";
+   String config = "src/test/data/config";
 
-   public static void main(String[] args) {
-      Test test = new Test();
-      b64 = new Base64();
-      test.run();
-   }
+   public void testParse() {
 
-   private void logit(String msg) {
-      System.out.println(msg);
-   }
+      IamMessageHandler handler = new IamMessageHandler();
+      handler.init(config);
 
-   public void run() {
-     IamMessageHandler handler = new IamMessageHandler();
-     handler.init(config);
-
-      // get the doc ( test file with encoded message )
+      // get the test document
       String sigdoc = null;
-      System.out.println("Processing encoded message from " + encodedMessageFile);
-      System.out.println("Original message body text from " + MessageBodyFile);
       try {
          sigdoc = new String(Files.readAllBytes(Paths.get(encodedMessageFile)));
-         logit("doc=" + sigdoc);
       } catch (IOException e) {
-         logit(e.toString());
-         System.exit(1);
+         assertNotNull(null);
       }
 
       try {
          IamMessage msg = handler.parse(sigdoc);
-         // verify body
+         assertNotNull(msg);
          String orig = new String(Files.readAllBytes(Paths.get(MessageBodyFile)));
-         if (orig.equals(msg.getBody())) System.out.println("Message body matches.");
+         assertEquals(orig, msg.getBody());
+         X509Certificate cert = handler.getCertificate("https://groups.uw.edu/pubkeys/sign2.crt");
+         assertNotNull(cert);
       } catch (IamMessageException e) {
-         logit(e.toString());
-         System.exit(1);
+         assertNotNull(null);
       } catch (IOException e) {
-         logit(e.toString());
-         System.exit(1);
+         assertNotNull(null);
       }
-      
-
 
    }
+
 }
+
+
+
 
