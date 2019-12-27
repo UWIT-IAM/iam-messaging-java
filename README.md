@@ -1,5 +1,7 @@
 # iam-messaging-java
 
-This is essentually a test of python->java signature and encryption version UWIT-2.
+This is an implementation of IAM UWIT-2 messaging.
 
-May be expanded into a package some day. 
+See also iam-messaging and iam-messaging-c
+
+Docs to follow
