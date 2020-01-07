@@ -1,0 +1,8 @@
+jars="`ls target/lib/*.jar`"
+cp=".:target/uw-iam-messaging-1.0.0.jar"
+for jar in $jars
+do
+  cp="${cp}:${jar}"
+done
+
+javac -classpath "$cp" Test.java
