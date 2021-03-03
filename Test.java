@@ -28,7 +28,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import java.security.cert.X509Certificate;
@@ -52,8 +54,10 @@ public class Test {
    final Logger logger = LoggerFactory.getLogger(Test.class);
 
 
-   String encodedMessageFile = "src/test/data/msg.enc";
-   String MessageBodyFile = "src/test/data/msg.body";
+   // String encodedMessageFile = "src/test/data/msg.enc";
+   // String MessageBodyFile = "src/test/data/msg.body";
+   String encodedMessageFile = "/home/fox/src/iam-messaging-c/i9n/test2.enc";
+   String MessageBodyFile = "/home/fox/src/iam-messaging-c/i9n/test2.txt";
    private static Base64 b64;
    String config = "src/test/data/config";
 
@@ -75,13 +79,15 @@ public class Test {
    public void run() throws Exception {
      logger.info("Starting");
 
-/**   AWS sns send test **/
+
+/**   AWS sns send test 
       AWS aws = new AWS();
       aws.init("/home/fox/certs/msg-settings-west.json");
       String res = aws.sendMessage("Hello, world", "arn:aws:sns:us-west-2:611509864246:json-test-1", null);
       System.out.println(res);
+ **/
       
-/**  Encoder/Decoder test 
+/**  Encoder/Decoder test  */
      IamMessageHandler handler = new IamMessageHandler();
      handler.init(config);
 
@@ -97,17 +103,17 @@ public class Test {
       Map<String,String> decmsg = handler.decodeMessage(enc);
 
       System.out.println(decmsg);
-         System.exit(1);
+/*
 **/
 
-/**   Compability test.  Doc from python version
+/**   Compability test.  Doc from python version */
       // get the doc ( test file with encoded message )
       String sigdoc = null;
       System.out.println("Processing encoded message from " + encodedMessageFile);
-      System.out.println("Original message body text from " + MessageBodyFile);
+      // System.out.println("Original message body text from " + MessageBodyFile);
       try {
          sigdoc = new String(Files.readAllBytes(Paths.get(encodedMessageFile)));
-         logit("doc=" + sigdoc);
+         // logit("doc=" + sigdoc);
       } catch (IOException e) {
          logit(e.toString());
          System.exit(1);
@@ -129,6 +135,7 @@ public class Test {
          logit(e.toString());
          System.exit(1);
       }
+/*
  **/  
 
 
